@@ -31,6 +31,11 @@ public class OperationServiceImpl implements IOperationService {
     }
 
     @Override
+    public Flux<Operation> findAllByOriginNumberIsOrDestionationNumberIs(String originNumber, String destinationNumber) {
+        return operationRepository.findAllByOriginNumberIsOrDestinationNumberIs(originNumber, destinationNumber);
+    }
+
+    @Override
     public void deleteById(String id) {
         operationRepository.deleteById(id);
     }

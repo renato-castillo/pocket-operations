@@ -3,10 +3,14 @@ package com.bootcamp.pocketoperations.resource;
 import com.bootcamp.pocketoperations.controller.dto.OperationDto;
 import com.bootcamp.pocketoperations.entity.Operation;
 import com.bootcamp.pocketoperations.service.IOperationService;
+import com.bootcamp.pocketoperations.type.ClientType;
+import com.bootcamp.pocketoperations.type.OperationType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Service
@@ -15,9 +19,9 @@ public class OperationResource {
     @Autowired
     private IOperationService operationService;
 
-    public Mono<Operation> saveOperation(OperationDto operationDto) {
+    public Mono<OperationDto> saveOperation(OperationDto operationDto) {
 
-        Operation operation = convert(operationDto);
+        Operation operation = convertToEntity(operationDto);
 
         switch (operationDto.getOperationType()) {
             case PAYMENT:
@@ -26,14 +30,28 @@ public class OperationResource {
                 SI HAY SALDO REALIZO LA OPERACIÓN Y LA GUARDO,
                 DE LO CONTRARIO, RETORNO UN EMPTY
                 */
-                return operationService.save(operation);
+                return operationService.save(operation).map(x -> convertToDto(x));
             default:
                 return Mono.empty();
         }
     }
 
-    Operation convert(OperationDto operationDto) {
+    public Flux<OperationDto> findAllByClient(String cellphoneNumber) {
+        return operationService.findAllByOriginNumberIsOrDestionationNumberIs(cellphoneNumber, cellphoneNumber)
+                .map(x -> {
+                    if(x.getOriginNumber() == cellphoneNumber) {
+                        x.setAmount(x.getAmount().negate());
+                    } else {
+                        x.setAmount(x.getAmount().abs());
+                    }
+
+                    return convertToDto(x);
+                });
+    }
+
+    private Operation convertToEntity(OperationDto operationDto) {
         Operation operation = new Operation();
+        operation.setId(operationDto.getId());
         operation.setOperationType(operationDto.getOperationType().getOperationTypeDescription());
         operation.setClientType(operationDto.getClientType().getClientTypeDescription());
         operation.setDestinationNumber(operation.getDestinationNumber());
@@ -42,6 +60,19 @@ public class OperationResource {
         operation.setTransactionDate(LocalDateTime.now());
 
         return operation;
+    }
+
+    private OperationDto convertToDto(Operation operation) {
+        OperationDto operationDto = new OperationDto();
+        operationDto.setId(operation.getId());
+        operationDto.setOperationType(OperationType.valueOf(operation.getOperationType()));
+        operationDto.setClientType(ClientType.valueOf(operation.getClientType()));
+        operationDto.setDestinationNumber(operation.getDestinationNumber());
+        operationDto.setOriginNumber(operation.getOriginNumber());
+        operationDto.setDestinationNumber(operationDto.getDestinationNumber());
+        operationDto.setTransactionDate(LocalDateTime.now());
+
+        return operationDto;
     }
 
 }

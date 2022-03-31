@@ -11,5 +11,6 @@ public interface IOperationService {
     Mono<Operation> save(Operation operation);
     Flux<Operation> findAll();
     Mono<Operation> findById(String id);
+    Flux<Operation> findAllByOriginNumberIsOrDestionationNumberIs(String originNumber, String destinationNumber);
     void deleteById(String id);
 }
