@@ -2,8 +2,7 @@ package com.bootcamp.pocketoperations.controller.dto;
 
 import com.bootcamp.pocketoperations.type.ClientType;
 import com.bootcamp.pocketoperations.type.OperationType;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

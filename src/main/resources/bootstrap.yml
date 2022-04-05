@@ -8,4 +8,5 @@ spring:
 
 base:
   url:
-    personalaccount: lb://pocketbook
+    personalaccount: lb://personal-account
+    pocketbook: lb://pocketbook

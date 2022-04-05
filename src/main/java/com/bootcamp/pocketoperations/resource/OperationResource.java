@@ -34,16 +34,17 @@ public class OperationResource {
     public Mono<OperationDto> saveOperation(OperationDto operationDto) {
 
         Operation operation = convertToEntity(operationDto);
+        operation.setTransactionDate(LocalDateTime.now());
 
-        switch (operationDto.getOperationType()) {
-            case TRANSFER:
-                return payment(operation).map(x -> convertToDto(x)).onErrorResume(Mono::error);
+        switch (operation.getOperationType()) {
+            case "TRANSFER":
+                return transfer(operation).map(x -> convertToDto(x)).onErrorResume(Mono::error);
             default:
                 return Mono.empty();
         }
     }
 
-    private Mono<Operation> payment(Operation operation) {
+    private Mono<Operation> transfer(Operation operation) {
         return pocketbookWebClient.findByCellphone(operation.getOriginNumber())
                 .flatMap(x -> {
                     if(x.getDebitCard() == null) {
@@ -75,8 +76,8 @@ public class OperationResource {
         BankAccountDto bankAccountDto = new BankAccountDto();
         bankAccountDto.setIdBankAccount(bankDebitDto.getIdBankAccount());
         bankAccountDto.setAccountNumber(bankDebitDto.getAccountNumber());
-        bankAccountDto.setBalance(bankAccountDto.getBalance());
-        bankAccountDto.setTypeAccount(bankAccountDto.getTypeAccount());
+        bankAccountDto.setBalance(bankDebitDto.getBalance());
+        bankAccountDto.setTypeAccount(bankDebitDto.getTypeAccount());
         bankAccountDto.setDniUser(bankDebitDto.getDniUser());
         bankAccountDto.setBenefitStatus(bankDebitDto.getBenefitStatus());
         bankAccountDto.setMaintenanceCharge(bankDebitDto.getMaintenanceCharge());
@@ -101,10 +102,10 @@ public class OperationResource {
     private Operation convertToEntity(OperationDto operationDto) {
         Operation operation = new Operation();
         operation.setId(operationDto.getId());
-        operation.setOperationType(operationDto.getOperationType().getOperationTypeDescription());
-        operation.setClientType(operationDto.getClientType().getClientTypeDescription());
-        operation.setDestinationNumber(operation.getDestinationNumber());
-        operation.setOriginNumber(operation.getOriginNumber());
+        //operation.setOperationType(operationDto.getOperationType().getOperationTypeDescription());
+        //operation.setClientType(operationDto.getClientType().getClientTypeDescription());
+        operation.setDestinationNumber(operationDto.getDestinationNumber());
+        operation.setOriginNumber(operationDto.getOriginNumber());
         operation.setDestinationNumber(operationDto.getDestinationNumber());
         operation.setTransactionDate(LocalDateTime.now());
 
