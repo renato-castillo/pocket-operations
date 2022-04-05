@@ -7,7 +7,8 @@ import java.util.Map;
 
 public enum OperationType {
 
-    PAYMENT(new BigDecimal(1), "PAYMENT");
+    PAYMENT(new BigDecimal(1), "PAYMENT"),
+    TRANSFER(new BigDecimal(2), "TRANSFER");
 
     private BigDecimal operationTypeId;
     private String operationTypeDescription;

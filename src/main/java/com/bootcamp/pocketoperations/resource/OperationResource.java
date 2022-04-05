@@ -5,6 +5,8 @@ import com.bootcamp.pocketoperations.entity.Operation;
 import com.bootcamp.pocketoperations.service.IOperationService;
 import com.bootcamp.pocketoperations.type.ClientType;
 import com.bootcamp.pocketoperations.type.OperationType;
+import com.bootcamp.pocketoperations.webclient.PocketbookWebClient;
+import com.bootcamp.pocketoperations.webclient.dto.PocketbookDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -18,6 +20,9 @@ public class OperationResource {
 
     @Autowired
     private IOperationService operationService;
+
+    @Autowired
+    private PocketbookWebClient pocketbookWebClient;
 
     public Mono<OperationDto> saveOperation(OperationDto operationDto) {
 
@@ -34,6 +39,19 @@ public class OperationResource {
             default:
                 return Mono.empty();
         }
+    }
+
+    private Mono<PocketbookDto> payment(String originCellphoneNumber, BigDecimal amount) {
+        return pocketbookWebClient.findByCellphone(originCellphoneNumber)
+                .flatMap(x -> {
+                    if (amount.compareTo(x.getBalance()) <= 0) {
+                        x.setBalance(x.getBalance().subtract(amount));
+                    } else {
+                        return Mono.error(new Exception("Insufficient Balance"));
+                    }
+
+                    return pocketbookWebClient.update(x);
+                });
     }
 
     public Flux<OperationDto> findAllByClient(String cellphoneNumber) {
