@@ -5,7 +5,11 @@ import com.bootcamp.pocketoperations.entity.Operation;
 import com.bootcamp.pocketoperations.service.IOperationService;
 import com.bootcamp.pocketoperations.type.ClientType;
 import com.bootcamp.pocketoperations.type.OperationType;
+import com.bootcamp.pocketoperations.webclient.PersonalAccountWebclient;
 import com.bootcamp.pocketoperations.webclient.PocketbookWebClient;
+import com.bootcamp.pocketoperations.webclient.dto.AccountDto;
+import com.bootcamp.pocketoperations.webclient.dto.BankAccountDto;
+import com.bootcamp.pocketoperations.webclient.dto.BankDebitDto;
 import com.bootcamp.pocketoperations.webclient.dto.PocketbookDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -24,34 +28,61 @@ public class OperationResource {
     @Autowired
     private PocketbookWebClient pocketbookWebClient;
 
+    @Autowired
+    private PersonalAccountWebclient personalAccountWebclient;
+
     public Mono<OperationDto> saveOperation(OperationDto operationDto) {
 
         Operation operation = convertToEntity(operationDto);
 
         switch (operationDto.getOperationType()) {
-            case PAYMENT:
-                /* PRIMERO OBTENGO EL MONEDERO
-                POSTERIORMENTE, OBTENGO EL SALDO Y VALIDO
-                SI HAY SALDO REALIZO LA OPERACIÓN Y LA GUARDO,
-                DE LO CONTRARIO, RETORNO UN EMPTY
-                */
-                return operationService.save(operation).map(x -> convertToDto(x));
+            case TRANSFER:
+                return payment(operation).map(x -> convertToDto(x)).onErrorResume(Mono::error);
             default:
                 return Mono.empty();
         }
     }
 
-    private Mono<PocketbookDto> payment(String originCellphoneNumber, BigDecimal amount) {
-        return pocketbookWebClient.findByCellphone(originCellphoneNumber)
+    private Mono<Operation> payment(Operation operation) {
+        return pocketbookWebClient.findByCellphone(operation.getOriginNumber())
                 .flatMap(x -> {
-                    if (amount.compareTo(x.getBalance()) <= 0) {
-                        x.setBalance(x.getBalance().subtract(amount));
+                    if(x.getDebitCard() == null) {
+                        if (operation.getAmount().compareTo(x.getBalance()) <= 0) {
+                            x.setBalance(x.getBalance().subtract(operation.getAmount()));
+                            pocketbookWebClient.update(x);
+                        } else {
+                            return Mono.error(new Exception("Insufficient Balance"));
+                        }
                     } else {
-                        return Mono.error(new Exception("Insufficient Balance"));
+                        personalAccountWebclient.findByDebitCard(x.getDebitCard())
+                                .flatMap(account -> {
+                                    if (operation.getAmount().compareTo(new BigDecimal(account.getBalance())) <= 0) {
+                                        account.setBalance(new BigDecimal(account.getBalance()).subtract(operation.getAmount()).intValue());
+
+                                       return personalAccountWebclient.update(convertToBankAccountDto(account));
+                                    } else {
+                                        return Mono.error(new Exception("Insufficient Balance"));
+                                    }
+                                });
                     }
 
-                    return pocketbookWebClient.update(x);
+
+                    return operationService.save(operation);
                 });
+    }
+
+    private BankAccountDto convertToBankAccountDto(BankDebitDto bankDebitDto) {
+        BankAccountDto bankAccountDto = new BankAccountDto();
+        bankAccountDto.setIdBankAccount(bankDebitDto.getIdBankAccount());
+        bankAccountDto.setAccountNumber(bankDebitDto.getAccountNumber());
+        bankAccountDto.setBalance(bankAccountDto.getBalance());
+        bankAccountDto.setTypeAccount(bankAccountDto.getTypeAccount());
+        bankAccountDto.setDniUser(bankDebitDto.getDniUser());
+        bankAccountDto.setBenefitStatus(bankDebitDto.getBenefitStatus());
+        bankAccountDto.setMaintenanceCharge(bankDebitDto.getMaintenanceCharge());
+        bankAccountDto.setMovementNumber(bankDebitDto.getMovementNumber());
+
+        return bankAccountDto;
     }
 
     public Flux<OperationDto> findAllByClient(String cellphoneNumber) {
